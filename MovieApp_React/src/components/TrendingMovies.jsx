@@ -138,7 +138,6 @@ const TrendingMovies = ({
                     {vote_count ? `${vote_count} votes` : 'N/A'}
                 </div>
             </div>
-            <Carousel images={movieBackdrop} />
         </div>
 
     )

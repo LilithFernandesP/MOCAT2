@@ -45,7 +45,7 @@ const App = () => {
                 return;
             }
 
-            setMostTrendingMovie(mostTrendingMovieData.results || []);
+            setMostTrendingMovie(mostTrendingMovieData.results[0] || []);
         } catch (error) {
             console.log(error);
         }
