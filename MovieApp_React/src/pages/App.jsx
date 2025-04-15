@@ -52,6 +52,8 @@ const App = () => {
             }
 
             setTrendingMovie((TrendingMovieData.results).slice(0,10)|| []);
+            setMostTrendingMovie(mostTrendingMovieData.results[0] || []);
+
         } catch (error) {
             console.log(error);
         }
