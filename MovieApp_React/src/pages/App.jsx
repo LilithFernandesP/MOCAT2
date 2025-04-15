@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import {useDebounce} from 'react-use';
 import {updateSearchCount} from '../appwrite.js'
-import {getTrendingMovies} from '../appwrite.js'
 import '../App.css'
 import Search from '../components/Search.jsx'
 import Spinner from '../components/Spinner.jsx'
@@ -12,40 +11,49 @@ import CategoryMenu from "../components/CategoryMenu.jsx";
 import ShowMoreMovies from "../components/ShowMoreMovies.jsx";
 import {useNavigate} from "react-router-dom";
 import TrendingMovies from "../components/TrendingMovies.jsx";
+import Carousel from "../components/TrendingMoviesView.jsx";
+import Navbar from "../components/Navbar.jsx";
+import Footer from "../components/Footer.jsx";
 
+ //main page, fetch movie data and call components to show it
 const App = () => {
+
+    //#region Attributes
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [movieList, setMovieList] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-    const [trendingMovies, setTrendingMovies] = useState([]);
-    const [mostTrendingMovie, setMostTrendingMovie] = useState([]);
+    const [trendingMovies, setTrendingMovie] = useState([]);
     const [sortBy, setSortBy] = useState("popularity.desc");
     const [page, setPage] = useState(1);
     const [genreId, setGenreId] = useState()
     useDebounce(() => setDebouncedSearchTerm(searchTerm), 500, [searchTerm])
+    //#endregion
 
+    //#region FetchingData
     const fetchTrendingMovie = async () => {
         setIsLoading(true);
         setErrorMessage('');
         try {
-            const mostTrendingMovieResponse = await fetch(`${API_BASE_URL}/trending/movie/day`, API_OPTIONS);
+            const TrendingMovieResponse = await fetch(`${API_BASE_URL}/trending/movie/day`, API_OPTIONS);
 
-            if (!mostTrendingMovieResponse.ok) {
+            if (!TrendingMovieResponse.ok) {
                 throw new Error('failed')
             }
 
-            const mostTrendingMovieData = await mostTrendingMovieResponse.json();
+            const TrendingMovieData = await TrendingMovieResponse.json();
 
-            if (mostTrendingMovieData.response === false) {
-                setErrorMessage(mostTrendingMovieData.Error || 'failed to fetch trending movie');
-                setMostTrendingMovie([]);
+            if (TrendingMovieData.response === false) {
+                setErrorMessage(TrendingMovieData.Error || 'failed to fetch trending movie');
+                setTrendingMovie([]);
                 return;
             }
 
+            setTrendingMovie((TrendingMovieData.results).slice(0,10)|| []);
             setMostTrendingMovie(mostTrendingMovieData.results[0] || []);
+
         } catch (error) {
             console.log(error);
         }
@@ -88,73 +96,60 @@ const App = () => {
             setIsLoading(false);
         }
     }
+    //#endregion
 
-    const loadTrendingMovies = async () => {
-        try {
-            const movies = await getTrendingMovies();
-            setTrendingMovies(movies);
-        } catch (error) {
-            console.error(`Error fetching trending movies: ${error}`);
-        }
-    }
-
+    //#region UseEffects
     useEffect(() => {
         fetchAllMovies(debouncedSearchTerm, page);
     }, [sortBy, page, debouncedSearchTerm, genreId])
-
     useEffect(() => {
-        loadTrendingMovies();
         fetchTrendingMovie();
     }, [])
     useEffect(() => {
         setPage(1);
     }, [sortBy, debouncedSearchTerm]);
+    //#endregion
+
     return (
         <main>
+            <Navbar />
             <header className='m-0'>
-                < TrendingMovies movie={mostTrendingMovie}/>
+                <Carousel>
+                    {trendingMovies.map((movie) => (
+                        <TrendingMovies key={movie.id} movie={movie} />
+                    ))}
+                </Carousel>
             </header>
-
             <div className='wrapper pt-0'>
 
-                {/*{trendingMovies.length>0 &&(*/}
-
-                {/*<section className='trending'>*/}
-                {/*  <h2>Trending Movies</h2>*/}
-                {/*  <ul>*/}
-                {/*    {trendingMovies.map((movie, index)=>(*/}
-                {/*      <li key={movie.$id}>*/}
-                {/*        <p>{index+1}</p>*/}
-                {/*        <img src={movie.poster_url} alt={movie.title} />*/}
-                {/*      </li>*/}
-                {/*    ))}*/}
-                {/*  </ul>*/}
-                {/*</section>*/}
-                {/*)}*/}
                 <section className='all-movies'>
+                    <Search searchTerm={searchTerm} setSearchTerm={setSearchTerm}/>
 
-                        <Search searchTerm={searchTerm} setSearchTerm={setSearchTerm}/>
                     <div className='searchTermsContainer'>
                         <SortByMenu sortBy={sortBy} setSortBy={setSortBy}/>
                         <CategoryMenu genreId={genreId} setGenreId={setGenreId}/>
-
                     </div>
 
                     <h2>All Movies</h2>
+
                     <ul>
                         {movieList.map((movie) => (
                             <MovieCard key={movie.id} movie={movie}/>
                         ))}
                     </ul>
+
                     {isLoading ? (
                             <Spinner />
-                        ):
+                        ) :
                         errorMessage
                     }
+
                     <ShowMoreMovies page={page} setPage={setPage}/>
                 </section>
             </div>
+            <Footer />
         </main>
+
     )
 }
 

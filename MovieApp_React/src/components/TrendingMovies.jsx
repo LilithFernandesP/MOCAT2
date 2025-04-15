@@ -1,101 +1,60 @@
-import React, {useEffect, useState} from 'react'
+import React, {useEffect, useRef, useState} from 'react'
 import {API_BASE_URL, API_OPTIONS} from '../apiConfig';
 import {useNavigate} from "react-router-dom";
 import Carousel from "./TrendingMoviesView.jsx";
 
+//Code to fetch movie data from a list of movies
+const TrendingMovies = ({ movie }) => {
 
-const TrendingMovies = ({
-                                    movie: {
-                                        id,
-                                        title,
-                                        vote_average,
-                                        poster_path,
-                                        release_date,
-                                        original_language,
-                                        overview,
-                                        genre_ids,
-                                        vote_count
-                                    }
-                                }) => {
-    const [movieBackdrop, setMovieBackdrop] = useState([])
-    const [genres, setGenres] = useState([])
-    const [trailerId, setTrailerId] = useState([])
+    //#region Attributes
+    const { id, title, vote_average, poster_path, release_date, overview, genre_ids, vote_count } = movie;
+    const [movieBackdrop, setMovieBackdrop] = useState([]);
+    const [genres, setGenres] = useState([]);
+    const [trailerId, setTrailerId] = useState([]);
     const navigate = useNavigate();
+    //#endregion
     const onMovieClick = (id) => {
         navigate(`/moviepage?movie_id=${id}`);
     }
 
-    const fetchImages = async (movie_id) => {
-        if (!movie_id) return;
+    //#region Fetching Data
+        useEffect(() => {
+        const fetchMovieData = async () => {
+            try {
+                // Fetch Images
+                const imageResponse = await fetch(`${API_BASE_URL}/movie/${id}/images`, API_OPTIONS);
+                const imageData = await imageResponse.json();
+                setMovieBackdrop(imageData.backdrops || []);
 
-        try {
-            const response = await fetch(`${API_BASE_URL}/movie/${movie_id}/images`, API_OPTIONS);
+                // Fetch Genres
+                const genreResponse = await fetch(`${API_BASE_URL}/genre/movie/list?language=en`, API_OPTIONS);
+                const genreData = await genreResponse.json();
+                const movieGenres = genreData.genres.filter((genre) => genre_ids.includes(genre.id));
+                setGenres(movieGenres.map((genre) => genre.name));
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch images');
+                // Fetch Trailer
+                const trailerResponse = await fetch(`${API_BASE_URL}/movie/${id}/videos?language=en-US`, API_OPTIONS);
+                const trailerData = await trailerResponse.json();
+                const trailer = trailerData.results.find(
+                    (video) => video.type === 'Trailer' && video.site === 'YouTube' && video.official
+                );
+                const trailerAlternate = trailerData.results.find(
+                    (video) => video.type === 'Trailer' && video.site === 'YouTube'
+                );
+                setTrailerId(trailer || trailerAlternate || null);
+
+            } catch (error) {
+                console.error('Erro ao buscar dados do filme:', error);
             }
+        };
 
-            const data = await response.json();
-            setMovieBackdrop(data.backdrops || []);
-
-        } catch (error) {
-            console.error("Erro ao buscar imagens:", error);
-        }
-    }
-    const fetchGenre = async (movieGenreID) => {
-        if (!movieGenreID) return;
-        try {
-            const genreResponse = await fetch(`${API_BASE_URL}/genre/movie/list?language=en`, API_OPTIONS);
-
-            if (!genreResponse.ok) {
-                throw new Error('Failed to fetch genres');
-            }
-
-            const genreData = await genreResponse.json();
-            const movieGenres = genreData.genres.filter(genre => genre_ids.includes(genre.id));
-
-            setGenres(movieGenres.map(genre => genre.name));
-
-        } catch (error) {
-            console.error("Erro ao buscar generos:", error);
-        }
-    }
-
-    const fetchTrailer = async (movie_id) => {
-        if (!movie_id) return;
-        const responseTrailer = await fetch(`${API_BASE_URL}/movie/${movie_id}/videos?language=en-US`, API_OPTIONS);
-
-        if (!responseTrailer.ok) {
-            throw new Error('Failed to fetch trailers');
-        }
-
-        const dataTrailer = await responseTrailer.json();
-
-        //Pegando o trailer na Array de vídeos retornados
-        const trailer = dataTrailer.results.find(video =>
-            video.type === "Trailer" && video.site === "YouTube" && video.official
-        );
-        const fallbackTrailer = dataTrailer.results.find(video =>
-            video.type === "Trailer" && video.site === "YouTube"
-        );
-
-
-        setTrailerId(trailer || fallbackTrailer || []);
-
-
-
-
-    }
-
-    useEffect(() => {
-        fetchImages(id);
-        fetchGenre(genre_ids);
-        fetchTrailer(id)
+        fetchMovieData();
     }, [id]);
+    //#endregion
 
     return (
 
-        <div className="slide"
+        <div className="slide "
              style={{
                  backgroundImage: `url(${movieBackdrop?.[0]?.file_path ? `https://image.tmdb.org/t/p/original/${movieBackdrop[0].file_path}` : '/no-movie.png'})`,
              }}>
@@ -104,29 +63,28 @@ const TrendingMovies = ({
                  src={poster_path ? `https://image.tmdb.org/t/p/w500/${poster_path}` : '/no-movie.png'}
                  alt={title}
             />
-
             <div className='slideContent w-full h-full'>
                 <div className='justify-start text-white'>
                     <div className='flex justify-between '>
                         <p className='text-xl font-extrabold hidden sm:block'>
                             {release_date ? release_date.split('-')[0] : 'N/A'}
                         </p>
-                        <span className='font-black text-red-900 text-xl uppercase hidden sm:block'>
+                        <p className='font-black text-red-900 text-xl uppercase hidden sm:block'>
                             {genres ? genres.join(' • ') : 'N/A'}
-                      </span>
+                        </p>
                     </div>
-                    <h2 className='text-7xl pt-2 pb-2 uppercase '>
-                        <button className='hover:text-8xl hover:text-red-900 transition-all'
+                    <h2 className='text-[min(10vw,70px)] pt-2 pb-2 uppercase  max-h-[160px] md:max-h-full overflow-hidden whitespace-nowrap'>
+                        <button className='hover:text-[74px] hover:text-red-900 transition-all'
                                 onClick={() => onMovieClick(id)}>{title}</button>
                     </h2>
-                    <p className='text-0.5 hidden lg:block md:block'>
+                    <p>
                         {overview ? overview : 'N/A'}
                     </p>
                 </div>
 
-                <div className='rating text-white justify-self-end  mt-10 font-extrabold gap-3'>
+                <div className='rating text-white justify-self-end mt-10 font-extrabold gap-3'>
                     <div className='watch_trailer'>
-                        <a href={`https://www.youtube.com/watch?v=${trailerId.key}`} target='_blank'>
+                        <a href={`https://www.youtube.com/watch?v=${trailerId?.key || ''}`} target='_blank'>
                             <button>
                                 <img src="play-button.svg" alt=""/>Watch trailer
                             </button>
